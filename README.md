@@ -1,6 +1,6 @@
 # airdrop
 
-a tiny macOS CLI that AirDrops files and URLs from the terminal. multiple files in one transfer. macOS 14+.
+a tiny macOS CLI that AirDrops files and URLs from the terminal. multiple files in one transfer. developed and tested on macOS 26.
 
 <!-- ![demo](./demo.gif) -->
 
@@ -30,7 +30,7 @@ both put `ad` on your `PATH`.
 
 ## why
 
-other CLI airdrop tools hang on macOS 14+ after the picker dismisses. this one ships as a proper `.app` bundle so `sharingd` keeps the share session alive. details in [CLAUDE.md](CLAUDE.md#pitfalls).
+other CLI airdrop tools we tested hang after the picker dismisses. this one ships as a proper `.app` bundle so `sharingd` keeps the share session alive. details in [CLAUDE.md](CLAUDE.md#pitfalls).
 
 ## development
 

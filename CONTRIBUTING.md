@@ -2,7 +2,7 @@
 
 ## prerequisites
 
-- macOS 13 (Ventura) or later — macOS 14+ is where the picker hang in other CLI airdrop tools doesn't bite
+- macOS (developed and tested on macOS 26 Tahoe; earlier versions are likely fine but untested)
 - Xcode command line tools (`xcode-select --install`)
 - [mise](https://mise.jdx.dev) for the task runner
 
@@ -12,7 +12,7 @@
 git clone https://github.com/mihaicrisan04/airdrop
 cd airdrop
 mise run install
-ad --version    # confirm the install worked
+ad --version
 ```
 
 ## development loop
@@ -22,18 +22,18 @@ mise run test       # build + smoke tests
 mise run install    # rebuild and reinstall locally
 ```
 
-Source lives in `Sources/main.swift` (single file, AppKit only). Bundle metadata is `Info.plist`. Tasks: `mise tasks ls`.
+source lives in `Sources/main.swift`. bundle metadata is `Info.plist`. tasks: `mise tasks ls`.
 
-End-to-end AirDrop behaviour can't be automated — exercise it manually by sending to your iPhone or another Mac.
+the end-to-end AirDrop flow can't be automated — exercise it manually by sending to your iPhone or another Mac.
 
 ## pull requests
 
-- Keep PRs focused. One concern per PR.
-- If the change is user-facing, add a `[unreleased]` entry at the top of `CHANGELOG.md`.
-- CI must be green.
-- New flags or exit codes need matching cases in `Tests/smoke.sh`.
+- one concern per PR
+- add a `[unreleased]` entry at the top of `CHANGELOG.md` for user-facing changes
+- CI must be green
+- new flags or exit codes need matching cases in `Tests/smoke.sh`
 
-For deeper architecture notes, lifecycle pitfalls, and the release process, see [CLAUDE.md](CLAUDE.md).
+deeper architecture notes, lifecycle pitfalls and release flow live in [CLAUDE.md](CLAUDE.md).
 
 ## license
 

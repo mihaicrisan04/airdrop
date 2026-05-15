@@ -2,74 +2,74 @@
 
 ## what this is
 
-A tiny macOS CLI that AirDrops files and URLs via `NSSharingService(named: .sendViaAirDrop)`. Ships as a proper `.app` bundle (Info.plist + ad-hoc codesigned binary), installed to `~/Applications/Airdrop.app`, with a wrapper at `~/.local/bin/ad`. Distributed via the personal homebrew tap at `mihaicrisan04/homebrew-tap`.
+a tiny macOS CLI that AirDrops files and URLs via `NSSharingService(named: .sendViaAirDrop)`. ships as a proper `.app` bundle (Info.plist + ad-hoc codesigned binary), installed to `~/Applications/Airdrop.app`, with a wrapper at `~/.local/bin/ad`. distributed via the personal homebrew tap at `mihaicrisan04/homebrew-tap`.
 
-Source is a single Swift file. The hard part of this project is the lifecycle plumbing around AppKit's share APIs (see Pitfalls), not the code itself.
+source is a single Swift file. the hard part of this project is the lifecycle plumbing around AppKit's share APIs (see pitfalls), not the code itself.
+
+developed and tested on macOS 26 (Tahoe). earlier macOS versions are likely fine but untested — Info.plist still declares `LSMinimumSystemVersion = 13.0` because that's the API floor we built against, not a verified support level.
 
 ## initial setup
 
 ```bash
-xcode-select --install   # if not already installed
-mise install             # no required runtimes; loads task runner
+xcode-select --install
+mise install
 ```
 
 ## local dev
 
-After editing `Sources/main.swift` or `Info.plist`:
-
 ```bash
 mise run install   # builds .app, installs to ~/Applications, drops `ad` to ~/.local/bin
-mise run test      # runs smoke tests against the freshly built binary
+mise run test      # builds + smoke tests
 ```
 
-`mise run install` is idempotent — re-running it overwrites the existing bundle and re-registers with LaunchServices.
+`mise run install` is idempotent — it overwrites the existing bundle and re-registers with LaunchServices.
 
-End-to-end AirDrop flow needs a real receiving device. Smoke tests only cover the CLI surface (flags, exit codes, error paths). Exercise the share manually by sending to your iPhone or another Mac after meaningful changes.
+end-to-end AirDrop needs a real receiving device. smoke tests only cover the CLI surface. exercise the share manually after meaningful changes.
 
 ## architecture
 
 ```
 Sources/main.swift          single Swift file, AppKit only
 Info.plist                  bundle metadata; CFBundleShortVersionString drives `ad --version`
-mise.toml                   build / install / test / uninstall / clean / bump / update-tap
+mise.toml                   build, install, test, uninstall, clean, bump, update-tap
 Tests/smoke.sh              POSIX shell, runs under `mise run test`
 .github/workflows/
-    build.yml               runs `mise run test` on push + PR
-    release.yml             on `v*` tag push or manual dispatch: builds, tests, packages, publishes Release
+    build.yml               runs `mise run test` on push and PR
+    release.yml             on `v*` tag push or manual dispatch: builds, tests, packages, publishes
 ```
 
-Built artifacts live under `build/Airdrop.app/...` (gitignored). Installation copies to `~/Applications/Airdrop.app` and writes a wrapper at `~/.local/bin/ad` that execs the binary *inside* the bundle.
+built artifacts live under `build/Airdrop.app/...` (gitignored). installation copies to `~/Applications/Airdrop.app` and writes a wrapper at `~/.local/bin/ad` that execs the binary *inside* the bundle.
 
 ## pitfalls
 
-These four make AirDrop actually complete on macOS 14+. Other CLI airdrop tools (`vldmrkl/airdrop-cli`, `tty-airdrop`, etc.) miss at least one and end up with the picker-dismisses-but-nothing-transfers hang. Don't undo any of them:
+these four make AirDrop actually complete on macOS 26. other CLI airdrop tools we tested against on the same machine hung with the picker-dismisses-but-nothing-transfers symptom. don't undo any of them:
 
-- **Activation policy must be `.regular`.** `LSUIElement = true` or `.accessory` policy makes `sharingd` drop the share session after the picker dismisses. The app must briefly come to the foreground.
-- **Use `NSApplication.run()`**, not `CFRunLoopRun()`. The share completion callbacks (`didShareItems` / `didFailToShareItems`) are dispatched through AppKit's event loop, not Core Foundation's. With the C runloop, the callbacks never get delivered and the process times out.
-- **Perform the share from `applicationDidFinishLaunching`**, dispatched on the main queue. Activation needs to have fully taken effect before `service.perform(withItems:)` runs.
-- **Terminate via `NSApp.terminate(nil)`** so the runloop processes any in-flight delegate callbacks before exit.
+- **activation policy must be `.regular`.** `LSUIElement = true` or `.accessory` policy makes `sharingd` drop the share session after the picker dismisses. the app must briefly come to the foreground.
+- **use `NSApplication.run()`**, not `CFRunLoopRun()`. the share completion callbacks (`didShareItems` / `didFailToShareItems`) are dispatched through AppKit's event loop, not Core Foundation's. with the C runloop the callbacks never get delivered and the process times out.
+- **perform the share from `applicationDidFinishLaunching`**, dispatched on the main queue. activation needs to have fully taken effect before `service.perform(withItems:)` runs.
+- **terminate via `NSApp.terminate(nil)`** so the runloop processes any in-flight delegate callbacks before exit.
 
-Other gotchas:
+other gotchas:
 
-- The wrapper at `~/.local/bin/ad` must `exec` the binary *inside* the `.app` bundle. Don't replace it with a direct copy of the binary out of the bundle — `Bundle.main` needs the bundle structure around it.
-- Brew installs put the bundle under `/opt/homebrew/Cellar/airdrop/<v>/libexec/Airdrop.app/...` with the wrapper at `/opt/homebrew/bin/ad`. Same shape, different prefix.
-- Code is ad-hoc signed (`codesign --force --sign -`). No Apple Developer ID involvement, no notarization, no Gatekeeper popups for users who build from source. Brew users get the same ad-hoc signature.
+- the wrapper at `~/.local/bin/ad` must `exec` the binary *inside* the `.app` bundle. don't replace it with a direct copy of the binary out of the bundle — `Bundle.main` needs the bundle structure around it.
+- brew installs put the bundle under `/opt/homebrew/Cellar/airdrop/<v>/libexec/Airdrop.app/...` with the wrapper at `/opt/homebrew/bin/ad`. same shape, different prefix.
+- code is ad-hoc signed (`codesign --force --sign -`). no Apple Developer ID involvement, no notarization. users building from source see no Gatekeeper prompts; brew users get the same signature.
 
 ## release
 
-Releases tag a version, attach a prebuilt `.app.zip` to a GitHub Release, and bump the homebrew tap formula so `brew upgrade airdrop` pulls it.
+releases tag a version, attach a prebuilt `.app.zip` to a GitHub Release, and bump the homebrew tap formula so `brew upgrade airdrop` pulls it.
 
-Steps:
+steps:
 
-1. **Bump version in `Info.plist`** — this is what `ad --version` prints, so it must match the git tag.
+1. **bump version in `Info.plist`** — this is what `ad --version` prints, so it must match the git tag.
 
    ```bash
    mise run bump 0.3.0
    ```
 
-2. **Update `CHANGELOG.md`** — add a `## [0.3.0] — YYYY-MM-DD` entry at the top, describe user-facing changes.
+2. **update `CHANGELOG.md`** — add a `## [0.3.0] — YYYY-MM-DD` entry at the top, describe user-facing changes.
 
-3. **Commit, tag, push.**
+3. **commit, tag, push.**
 
    ```bash
    git commit -am "v0.3.0"
@@ -77,9 +77,9 @@ Steps:
    git push origin main v0.3.0
    ```
 
-   The tag push fires `.github/workflows/release.yml`. It runs tests, builds the `.app`, zips it, and creates a GitHub Release with auto-generated notes plus `Airdrop-v0.3.0.app.zip`.
+   the tag push fires `.github/workflows/release.yml`. it runs tests, builds the `.app`, zips it, creates a GitHub Release with auto-generated notes plus `Airdrop-v0.3.0.app.zip`.
 
-4. **Update the homebrew tap formula.**
+4. **update the homebrew tap formula.**
 
    ```bash
    mise run update-tap 0.3.0
@@ -88,23 +88,23 @@ Steps:
    git commit -am "airdrop v0.3.0" && git push
    ```
 
-   `update-tap` downloads the source tarball, computes its sha256, and rewrites the `url` and `sha256` lines in the formula. After the push, `brew upgrade airdrop` pulls the new version.
+   after the push, `brew upgrade airdrop` pulls the new version.
 
-Notes:
+notes:
 
-- **Don't release every commit.** Bundle changes into meaningful versions. The release page is user-facing; noise hurts.
-- The release workflow has `workflow_dispatch`, so a failed run can be re-triggered from the Actions tab without re-tagging.
-- Public repos get unlimited GitHub Actions minutes, so CI cost isn't a constraint.
+- **don't release every commit.** bundle changes into meaningful versions. the release page is user-facing; noise hurts.
+- release workflow has `workflow_dispatch`, so a failed run can be re-triggered from the Actions tab without re-tagging.
+- public repos get unlimited GitHub Actions minutes, so CI cost isn't a constraint.
 
 ## testing policy
 
-- Tests run via `mise run test` (smoke) and `mise run build` (compile check). Both run in CI.
-- Don't write tests that grep source code or read `Info.plist` to assert a value is present — exercise the built binary instead.
-- The AirDrop flow itself can't be unit-tested (needs a real second device + human consent). Don't mock `NSSharingService`; the value of a passing mocked test is zero.
+- tests run via `mise run test` (smoke) and `mise run build` (compile check). both run in CI.
+- don't write tests that grep source code or read `Info.plist` to assert a value is present — exercise the built binary instead.
+- the AirDrop flow itself can't be unit-tested (needs a real second device + human consent). don't mock `NSSharingService`; the value of a passing mocked test is zero.
 
 ## conventions
 
-- Lowercase commit messages, concise, no Co-Authored-By trailer.
+- lowercase commit messages, concise, no Co-Authored-By trailer.
 - CHANGELOG entries are user-facing: describe *what changed*, not *how*.
-- New flags/exit codes go into `Tests/smoke.sh` alongside the change.
-- Prefer single commits for self-contained changes; use a two-commit "test reproduces bug → fix" structure for regression fixes so CI shows red→green.
+- new flags or exit codes go into `Tests/smoke.sh` alongside the change.
+- prefer single commits for self-contained changes; use a two-commit "test reproduces bug → fix" structure for regression fixes so CI shows red→green.
