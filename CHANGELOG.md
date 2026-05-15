@@ -5,6 +5,7 @@ this project follows [semantic versioning](https://semver.org).
 
 ## [unreleased]
 
+- app icon: `AppIcon.png` source is auto-converted to a multi-resolution `.icns` and baked into the bundle on build
 - `--quiet` / `-q` flag suppresses the `sent N items` output (useful in scripts)
 - `--text "..."` flag sends a literal text snippet via AirDrop (no temp file)
 - `-` as an argument reads stdin into a temp file and sends it (e.g. `pbpaste | ad -`)

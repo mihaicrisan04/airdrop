@@ -5,13 +5,44 @@ INSTALL_DIR = "{{env.HOME}}/Applications"
 BIN_DIR     = "{{env.HOME}}/.local/bin"
 LSREGISTER  = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 
+[tasks.icon]
+description = "generate AppIcon.icns from AppIcon.png"
+sources = ["AppIcon.png"]
+outputs = ["build/AppIcon.icns"]
+run = '''
+if [ ! -f AppIcon.png ]; then
+    echo "AppIcon.png missing, skipping icon generation"
+    exit 0
+fi
+mkdir -p "$BUILD_DIR/AppIcon.iconset"
+ISET="$BUILD_DIR/AppIcon.iconset"
+sips -z 16   16   AppIcon.png --out "$ISET/icon_16x16.png"      >/dev/null
+sips -z 32   32   AppIcon.png --out "$ISET/icon_16x16@2x.png"   >/dev/null
+sips -z 32   32   AppIcon.png --out "$ISET/icon_32x32.png"      >/dev/null
+sips -z 64   64   AppIcon.png --out "$ISET/icon_32x32@2x.png"   >/dev/null
+sips -z 128  128  AppIcon.png --out "$ISET/icon_128x128.png"    >/dev/null
+sips -z 256  256  AppIcon.png --out "$ISET/icon_128x128@2x.png" >/dev/null
+sips -z 256  256  AppIcon.png --out "$ISET/icon_256x256.png"    >/dev/null
+sips -z 512  512  AppIcon.png --out "$ISET/icon_256x256@2x.png" >/dev/null
+sips -z 512  512  AppIcon.png --out "$ISET/icon_512x512.png"    >/dev/null
+sips -z 1024 1024 AppIcon.png --out "$ISET/icon_512x512@2x.png" >/dev/null
+iconutil -c icns "$ISET" -o "$BUILD_DIR/AppIcon.icns"
+rm -rf "$ISET"
+echo "generated $BUILD_DIR/AppIcon.icns"
+'''
+
 [tasks.build]
 description = "build Airdrop.app bundle"
-sources = ["Sources/main.swift", "Info.plist"]
+depends = ["icon"]
+sources = ["Sources/main.swift", "Info.plist", "AppIcon.png"]
 outputs = ["build/Airdrop.app/Contents/MacOS/airdrop"]
 run = '''
-mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/MacOS"
+RES="$BUILD_DIR/$APP_NAME.app/Contents/Resources"
+mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/MacOS" "$RES"
 cp Info.plist "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
+if [ -f "$BUILD_DIR/AppIcon.icns" ]; then
+    cp "$BUILD_DIR/AppIcon.icns" "$RES/AppIcon.icns"
+fi
 swiftc -O -framework AppKit -o "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/airdrop" Sources/main.swift
 codesign --force --sign - "$BUILD_DIR/$APP_NAME.app"
 echo "built $BUILD_DIR/$APP_NAME.app"
