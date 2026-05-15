@@ -1,0 +1,24 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run test
+      - name: package
+        run: |
+          cd build
+          zip -ry "Airdrop-${GITHUB_REF_NAME}.app.zip" Airdrop.app
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: build/Airdrop-*.app.zip
+          generate_release_notes: true

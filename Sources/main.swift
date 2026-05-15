@@ -1,10 +1,39 @@
 import AppKit
 import Foundation
 
+let helpText = """
+ad — AirDrop files and URLs to nearby Apple devices
+
+usage:
+  ad <file|url> [file|url ...]
+  ad --help, -h
+  ad --version, -V
+
+multiple items are sent in a single AirDrop session.
+"""
+
+let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "unknown"
+
 let args = Array(CommandLine.arguments.dropFirst())
 
+for arg in args {
+    switch arg {
+    case "--help", "-h":
+        print(helpText)
+        exit(0)
+    case "--version", "-V":
+        print("ad \(version)")
+        exit(0)
+    default:
+        if arg.hasPrefix("-") {
+            FileHandle.standardError.write(Data("error: unknown flag: \(arg)\n\n\(helpText)\n".utf8))
+            exit(2)
+        }
+    }
+}
+
 guard !args.isEmpty else {
-    FileHandle.standardError.write(Data("usage: airdrop <file|url> [file|url...]\n".utf8))
+    FileHandle.standardError.write(Data("\(helpText)\n".utf8))
     exit(2)
 }
 

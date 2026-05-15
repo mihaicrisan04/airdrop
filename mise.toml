@@ -56,6 +56,11 @@ rm -f "$BIN_DIR/ad"
 echo "removed $INSTALL_DIR/$APP_NAME.app and $BIN_DIR/ad"
 '''
 
+[tasks.test]
+description = "run smoke tests"
+depends = ["build"]
+run = 'sh Tests/smoke.sh "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/airdrop"'
+
 [tasks.clean]
 description = "remove build artifacts"
 run = 'rm -rf "$BUILD_DIR"'

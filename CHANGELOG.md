@@ -3,6 +3,14 @@
 all notable changes to this project are documented here.
 this project follows [semantic versioning](https://semver.org).
 
+## [0.2.0] — 2026-05-15
+
+- `--help` / `-h` and `--version` / `-V` flags
+- reject unknown flags with a clear error
+- smoke tests cover the cli surface (Tests/smoke.sh)
+- CI now runs tests on every push and PR
+- tagged releases auto-publish a prebuilt `Airdrop.app.zip` via github actions
+
 ## [0.1.0] — 2026-05-15
 
 initial release.
