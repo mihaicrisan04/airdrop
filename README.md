@@ -1,0 +1,61 @@
+# airdrop
+
+a tiny macOS CLI that AirDrops files and URLs to nearby Apple devices, straight from the terminal. multiple files in a single transfer. works on macOS Sequoia and Tahoe (26).
+
+```sh
+ad ~/Downloads/file.pdf
+ad file1.md file2.png file3.mov     # one picker, one transfer
+ad https://example.com
+```
+
+## why
+
+every existing tool I tried — `vldmrkl/airdrop-cli`, `tty-airdrop`, `terminal-share`, etc. — fails on recent macOS. the AirDrop picker appears, you tap the recipient, the picker dismisses, and nothing actually transfers.
+
+the cause: those tools ship as bare CLI binaries running as accessory/background processes. `sharingd` on macOS 14+ needs a proper foreground `NSApplication` to keep the share session alive after the picker dismisses. without it, the handoff is silently dropped.
+
+this version is a proper `.app` bundle that briefly activates as a foreground app, performs the share through AppKit's event loop, and terminates cleanly.
+
+## install
+
+requires Xcode command line tools (`xcode-select --install`).
+
+```sh
+git clone https://github.com/mihaicrisan04/airdrop
+cd airdrop
+make install
+```
+
+this builds `Airdrop.app` and installs it to `~/Applications/Airdrop.app`. the executable is at `~/Applications/Airdrop.app/Contents/MacOS/airdrop`.
+
+add a convenience alias to your shell:
+
+```sh
+alias ad="$HOME/Applications/Airdrop.app/Contents/MacOS/airdrop"
+```
+
+## usage
+
+```sh
+ad <file|url> [file|url ...]
+```
+
+- file paths are resolved against `$PWD` and `~` expansion works
+- `http://` and `https://` arguments are treated as URLs
+- multiple items go in a single AirDrop session
+- the picker still appears (Apple's API requires user-consented recipient selection)
+
+## how it works
+
+uses `NSSharingService(named: .sendViaAirDrop)` from AppKit. the things existing tools get wrong on modern macOS:
+
+- runs as a regular activated foreground app (no `LSUIElement`)
+- drives the runloop via `NSApplication.run()` so share completion callbacks actually fire
+- performs the share from `applicationDidFinishLaunching` on the main queue, after activation takes effect
+- terminates via `NSApp.terminate` so the runloop processes callbacks before exit
+
+if you're hitting the same hang on macOS 14+, those four bullets are the recipe.
+
+## license
+
+MIT
