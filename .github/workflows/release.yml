@@ -3,6 +3,11 @@ name: release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'existing tag to (re)publish a release for (e.g. v0.2.0)'
+        required: true
 
 permissions:
   contents: write
@@ -12,13 +17,24 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: jdx/mise-action@v2
       - run: mise run test
+      - name: resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
       - name: package
         run: |
           cd build
-          zip -ry "Airdrop-${GITHUB_REF_NAME}.app.zip" Airdrop.app
+          zip -ry "Airdrop-${{ steps.tag.outputs.name }}.app.zip" Airdrop.app
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
           files: build/Airdrop-*.app.zip
           generate_release_notes: true

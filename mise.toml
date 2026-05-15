@@ -64,3 +64,48 @@ run = 'sh Tests/smoke.sh "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/airdrop"'
 [tasks.clean]
 description = "remove build artifacts"
 run = 'rm -rf "$BUILD_DIR"'
+
+[tasks.bump]
+description = "bump CFBundleShortVersionString in Info.plist (usage: mise run bump 0.3.0)"
+run = '''
+NEW_VERSION="${1:-}"
+if [ -z "$NEW_VERSION" ]; then
+    echo "usage: mise run bump <version>" >&2
+    exit 1
+fi
+if ! echo "$NEW_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    echo "error: version must be in X.Y.Z form, got '$NEW_VERSION'" >&2
+    exit 1
+fi
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $NEW_VERSION" Info.plist
+echo "Info.plist CFBundleShortVersionString → $NEW_VERSION"
+'''
+
+[tasks.update-tap]
+description = "rewrite the homebrew formula to point at a new release (usage: mise run update-tap 0.3.0)"
+env = { TAP_DIR = "{{env.HOME}}/dev/personal/homebrew-tap" }
+run = '''
+VERSION="${1:-}"
+if [ -z "$VERSION" ]; then
+    echo "usage: mise run update-tap <version>" >&2
+    exit 1
+fi
+if [ ! -d "$TAP_DIR" ]; then
+    echo "error: tap directory not found at $TAP_DIR" >&2
+    echo "set TAP_DIR env var to override the location" >&2
+    exit 1
+fi
+URL="https://github.com/mihaicrisan04/airdrop/archive/refs/tags/v${VERSION}.tar.gz"
+echo "fetching $URL"
+SHA=$(curl -fsSL "$URL" | shasum -a 256 | awk '{print $1}')
+if [ -z "$SHA" ]; then
+    echo "error: failed to fetch tarball; is v${VERSION} pushed and the workflow done?" >&2
+    exit 1
+fi
+FORMULA="$TAP_DIR/Formula/airdrop.rb"
+sed -i '' -E "s|archive/refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+\\.tar\\.gz|archive/refs/tags/v${VERSION}.tar.gz|" "$FORMULA"
+sed -i '' -E "s|sha256 \"[a-f0-9]+\"|sha256 \"${SHA}\"|" "$FORMULA"
+echo "updated $FORMULA → v${VERSION} (sha256 ${SHA})"
+echo "review with: git -C $TAP_DIR diff Formula/airdrop.rb"
+echo "publish with: git -C $TAP_DIR commit -am 'airdrop v${VERSION}' && git -C $TAP_DIR push"
+'''
