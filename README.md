@@ -2,7 +2,8 @@
 
 a tiny macOS CLI that AirDrops files and URLs from the terminal. multiple files in one transfer. developed and tested on macOS 26.
 
-<!-- ![demo](./demo.gif) -->
+<img width="1500" height="1080" alt="ad" src="https://github.com/user-attachments/assets/3cad49f6-6c46-49c3-ba81-4104247e62ab" />
+
 
 ```sh
 ad file.pdf
