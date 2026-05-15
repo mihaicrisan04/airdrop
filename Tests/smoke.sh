@@ -30,7 +30,7 @@ assert_grep() {
     pattern="$2"
     shift 2
     out=$("$@" 2>&1)
-    if echo "$out" | grep -qE "$pattern"; then
+    if echo "$out" | grep -qE -- "$pattern"; then
         echo "  pass: $desc"
     else
         echo "  FAIL: $desc (output did not match /$pattern/)"
@@ -40,16 +40,22 @@ assert_grep() {
 
 echo "running smoke tests against $BIN"
 
-run_check "--help exits 0"        0 "$BIN" --help
-run_check "-h exits 0"            0 "$BIN" -h
-run_check "--version exits 0"     0 "$BIN" --version
-run_check "-V exits 0"            0 "$BIN" -V
-run_check "no args exits 2"       2 "$BIN"
-run_check "unknown flag exits 2"  2 "$BIN" --bogus
-run_check "missing file exits 1"  1 "$BIN" /no/such/file
+run_check "--help exits 0"             0 "$BIN" --help
+run_check "-h exits 0"                 0 "$BIN" -h
+run_check "--version exits 0"          0 "$BIN" --version
+run_check "-V exits 0"                 0 "$BIN" -V
+run_check "no args exits 2"            2 "$BIN"
+run_check "unknown flag exits 2"       2 "$BIN" --bogus
+run_check "missing file exits 1"       1 "$BIN" /no/such/file
+run_check "--text without value 2"     2 "$BIN" --text
+run_check "--quiet alone exits 2"      2 "$BIN" --quiet
+run_check "-q alone exits 2"           2 "$BIN" -q
 
-assert_grep "--help mentions usage" "usage:"                    "$BIN" --help
-assert_grep "--version is semver"   "^ad [0-9]+\.[0-9]+\.[0-9]+" "$BIN" --version
+assert_grep "--help mentions usage"        "usage:"                    "$BIN" --help
+assert_grep "--help advertises --quiet"    "--quiet|-q"                "$BIN" --help
+assert_grep "--help advertises --text"     "--text"                    "$BIN" --help
+assert_grep "--help advertises stdin"      "stdin"                     "$BIN" --help
+assert_grep "--version is semver"          "^ad [0-9]+\.[0-9]+\.[0-9]+" "$BIN" --version
 
 echo
 if [ "$fail" -eq 0 ]; then
