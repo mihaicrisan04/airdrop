@@ -2,6 +2,7 @@
 APP_NAME    = "Airdrop"
 BUILD_DIR   = "build"
 INSTALL_DIR = "{{env.HOME}}/Applications"
+BIN_DIR     = "{{env.HOME}}/.local/bin"
 LSREGISTER  = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 
 [tasks.build]
@@ -17,21 +18,42 @@ echo "built $BUILD_DIR/$APP_NAME.app"
 '''
 
 [tasks.install]
-description = "install Airdrop.app to ~/Applications"
+description = "install Airdrop.app to ~/Applications and 'ad' to ~/.local/bin"
 depends = ["build"]
 run = '''
 mkdir -p "$INSTALL_DIR"
 rm -rf "$INSTALL_DIR/$APP_NAME.app"
 cp -R "$BUILD_DIR/$APP_NAME.app" "$INSTALL_DIR/"
 "$LSREGISTER" -f "$INSTALL_DIR/$APP_NAME.app"
-echo "installed: $INSTALL_DIR/$APP_NAME.app"
+
+mkdir -p "$BIN_DIR"
+cat > "$BIN_DIR/ad" <<EOF
+#!/bin/sh
+exec "\$HOME/Applications/$APP_NAME.app/Contents/MacOS/airdrop" "\$@"
+EOF
+chmod +x "$BIN_DIR/ad"
+
+echo "installed:"
+echo "  $INSTALL_DIR/$APP_NAME.app"
+echo "  $BIN_DIR/ad"
+
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *)
+    echo
+    echo "warning: $BIN_DIR is not in your PATH"
+    echo "add this to your shell profile:"
+    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    ;;
+esac
 '''
 
 [tasks.uninstall]
-description = "remove Airdrop.app from ~/Applications"
+description = "remove Airdrop.app and 'ad' wrapper"
 run = '''
 rm -rf "$INSTALL_DIR/$APP_NAME.app"
-echo "removed $INSTALL_DIR/$APP_NAME.app"
+rm -f "$BIN_DIR/ad"
+echo "removed $INSTALL_DIR/$APP_NAME.app and $BIN_DIR/ad"
 '''
 
 [tasks.clean]

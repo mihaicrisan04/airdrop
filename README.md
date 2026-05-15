@@ -29,11 +29,7 @@ cd airdrop
 mise run install
 ```
 
-this builds `Airdrop.app` and installs it to `~/Applications/Airdrop.app`. add a convenience alias to your shell:
-
-```sh
-alias ad="$HOME/Applications/Airdrop.app/Contents/MacOS/airdrop"
-```
+this builds `Airdrop.app`, installs it to `~/Applications/Airdrop.app`, and drops an `ad` wrapper into `~/.local/bin`. as long as `~/.local/bin` is on your `PATH`, the `ad` command is available everywhere — no shell alias required.
 
 ## usage
 
