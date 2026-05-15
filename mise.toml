@@ -1,0 +1,39 @@
+[env]
+APP_NAME    = "Airdrop"
+BUILD_DIR   = "build"
+INSTALL_DIR = "{{env.HOME}}/Applications"
+LSREGISTER  = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+
+[tasks.build]
+description = "build Airdrop.app bundle"
+sources = ["Sources/main.swift", "Info.plist"]
+outputs = ["build/Airdrop.app/Contents/MacOS/airdrop"]
+run = '''
+mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/MacOS"
+cp Info.plist "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
+swiftc -O -framework AppKit -o "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/airdrop" Sources/main.swift
+codesign --force --sign - "$BUILD_DIR/$APP_NAME.app"
+echo "built $BUILD_DIR/$APP_NAME.app"
+'''
+
+[tasks.install]
+description = "install Airdrop.app to ~/Applications"
+depends = ["build"]
+run = '''
+mkdir -p "$INSTALL_DIR"
+rm -rf "$INSTALL_DIR/$APP_NAME.app"
+cp -R "$BUILD_DIR/$APP_NAME.app" "$INSTALL_DIR/"
+"$LSREGISTER" -f "$INSTALL_DIR/$APP_NAME.app"
+echo "installed: $INSTALL_DIR/$APP_NAME.app"
+'''
+
+[tasks.uninstall]
+description = "remove Airdrop.app from ~/Applications"
+run = '''
+rm -rf "$INSTALL_DIR/$APP_NAME.app"
+echo "removed $INSTALL_DIR/$APP_NAME.app"
+'''
+
+[tasks.clean]
+description = "remove build artifacts"
+run = 'rm -rf "$BUILD_DIR"'
